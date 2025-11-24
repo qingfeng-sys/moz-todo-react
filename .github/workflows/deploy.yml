@@ -1,0 +1,51 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]  # 指定触发部署的分支
+
+# 设置必要的权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 防止并发部署冲突
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'  # 建议使用LTS版本，如18或20
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci           # ci比install更适用于自动化环境，能保证依赖精确
+
+      - name: 构建项目
+        run: npm run build
+
+      - name: 上传构建产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist        # 上传Vite构建输出的dist目录
+
+  deploy:
+    needs: build             # 依赖build任务
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
